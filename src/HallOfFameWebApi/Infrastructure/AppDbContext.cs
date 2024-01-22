@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HallOfFameWebApi.Infrastructure
 {
-    public class AppDbContext : DbContext
+    public class AppDbContext : DbContext, IAppDbContext
     {
         public DbSet<Person> Persons { get; set; }
         public DbSet<Skill> Skills { get; set; }

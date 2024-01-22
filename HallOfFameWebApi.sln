@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.34330.188
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HallOfFameWebApi", "src\HallOfFameWebApi\HallOfFameWebApi.csproj", "{ECC4E07C-7AD8-4C7E-91B0-E243DA96E599}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HallOfFameWebApi", "src\HallOfFameWebApi\HallOfFameWebApi.csproj", "{ECC4E07C-7AD8-4C7E-91B0-E243DA96E599}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HallOfFameWebApi.Tests", "test\HallOfFameWebApi.Tests\HallOfFameWebApi.Tests.csproj", "{2F60B5E3-3094-4576-955C-62AF71DFEBFF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{ECC4E07C-7AD8-4C7E-91B0-E243DA96E599}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ECC4E07C-7AD8-4C7E-91B0-E243DA96E599}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ECC4E07C-7AD8-4C7E-91B0-E243DA96E599}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2F60B5E3-3094-4576-955C-62AF71DFEBFF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2F60B5E3-3094-4576-955C-62AF71DFEBFF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2F60B5E3-3094-4576-955C-62AF71DFEBFF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2F60B5E3-3094-4576-955C-62AF71DFEBFF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

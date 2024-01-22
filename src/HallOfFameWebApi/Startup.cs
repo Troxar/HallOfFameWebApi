@@ -1,4 +1,5 @@
 ﻿using HallOfFameWebApi.Infrastructure;
+using HallOfFameWebApi.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace HallOfFameWebApi
@@ -19,6 +20,9 @@ namespace HallOfFameWebApi
             {
                 options.UseNpgsql(_config.GetConnectionString("DefaultConnection"));
             });
+
+            services.AddScoped<IAppDbContext, AppDbContext>();
+            services.AddScoped<IPersonService, PersonService>();
         }
 
         public void Configure(IApplicationBuilder app)
