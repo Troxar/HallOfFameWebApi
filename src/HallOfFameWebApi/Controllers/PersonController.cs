@@ -1,6 +1,7 @@
 ﻿using Asp.Versioning;
 using HallOfFameWebApi.Entities;
 using HallOfFameWebApi.Filters;
+using HallOfFameWebApi.Models;
 using HallOfFameWebApi.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -24,6 +25,13 @@ namespace HallOfFameWebApi.Controllers
         {
             IEnumerable<Person> persons = await _service.GetPersons();
             return Ok(persons);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreatePerson(CreatePersonCommand cmd)
+        {
+            long id = await _service.CreatePerson(cmd);
+            return Ok(new { id });
         }
     }
 }

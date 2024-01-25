@@ -1,5 +1,6 @@
 ﻿using HallOfFameWebApi.Entities;
 using HallOfFameWebApi.Infrastructure;
+using HallOfFameWebApi.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace HallOfFameWebApi.Services
@@ -11,6 +12,15 @@ namespace HallOfFameWebApi.Services
         public PersonService(IAppDbContext context)
         {
             _context = context;
+        }
+
+        public async Task<long> CreatePerson(CreatePersonCommand cmd)
+        {
+            Person person = cmd.ToPerson();
+            _context.Persons.Add(person);
+            await _context.SaveChangesAsync();
+
+            return person.Id;
         }
 
         public async Task<IEnumerable<Person>> GetPersons()
