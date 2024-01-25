@@ -16,6 +16,8 @@ namespace HallOfFameWebApi
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
+            services.AddSwaggerGen();
+
             services.AddDbContext<AppDbContext>(options =>
             {
                 options.UseNpgsql(_config.GetConnectionString("DefaultConnection"));
@@ -25,8 +27,14 @@ namespace HallOfFameWebApi
             services.AddScoped<IPersonService, PersonService>();
         }
 
-        public void Configure(IApplicationBuilder app)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            if (env.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
+
             app.UseHttpsRedirection();
             app.UseRouting();
             app.UseEndpoints(endpoints =>
