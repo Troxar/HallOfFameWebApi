@@ -1,12 +1,14 @@
-﻿using HallOfFameWebApi.Entities;
+﻿using Asp.Versioning;
+using HallOfFameWebApi.Entities;
 using HallOfFameWebApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 
 namespace HallOfFameWebApi.Controllers
 {
-    [Route("api/persons")]
+    [Route("api/v{version:apiVersion}/persons")]
     [ApiController]
+    [ApiVersion("1.0")]
     public class PersonController : ControllerBase
     {
         private readonly IPersonService _service;
