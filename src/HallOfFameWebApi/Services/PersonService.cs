@@ -25,7 +25,9 @@ namespace HallOfFameWebApi.Services
 
         public async Task<IEnumerable<Person>> GetPersons()
         {
-            return await _context.Persons.ToListAsync();
+            return await _context.Persons
+                .Include(p => p.Skills)
+                .ToListAsync();
         }
     }
 }
