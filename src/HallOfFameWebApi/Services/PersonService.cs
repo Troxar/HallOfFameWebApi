@@ -23,6 +23,14 @@ namespace HallOfFameWebApi.Services
             return person.Id;
         }
 
+        public async Task<Person?> GetPerson(long id)
+        {
+            return await _context.Persons
+                .Where(p => p.Id == id)
+                .Include(p => p.Skills)
+                .SingleOrDefaultAsync();
+        }
+
         public async Task<IEnumerable<Person>> GetPersons()
         {
             return await _context.Persons

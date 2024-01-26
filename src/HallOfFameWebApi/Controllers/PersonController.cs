@@ -27,6 +27,17 @@ namespace HallOfFameWebApi.Controllers
             return Ok(persons);
         }
 
+        [HttpGet("{id:long}")]
+        public async Task<IActionResult> GetPerson(long id)
+        {
+            Person? person = await _service.GetPerson(id);
+            if (person is null)
+            {
+                return NotFound($"Person not found, id = {id}");
+            }
+            return Ok(person);
+        }
+
         [HttpPost]
         public async Task<IActionResult> CreatePerson(CreatePersonCommand cmd)
         {

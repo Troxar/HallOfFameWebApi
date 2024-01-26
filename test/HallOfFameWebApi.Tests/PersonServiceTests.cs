@@ -62,20 +62,7 @@ namespace HallOfFameWebApi.Tests
                 new Person { Id = 4, Name = "p_name#4", DisplayName = "dn#4",
                     Skills = [new Skill { Name = "s_name#1" }, new Skill { Name = "s_name#2" }] }
             };
-
-            var connection = new SqliteConnection("DataSource=:memory:");
-            connection.Open();
-
-            var options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseSqlite(connection)
-                .Options;
-
-            using (var context = new AppDbContext(options))
-            {
-                context.Database.EnsureCreated();
-                context.Persons.AddRange(persons);
-                context.SaveChanges();
-            }
+            DbContextOptions<AppDbContext> options = InitializeInMemoryDatabase(persons);
 
             IEnumerable<Person> result;
             using (var context = new AppDbContext(options))
@@ -87,17 +74,56 @@ namespace HallOfFameWebApi.Tests
             Assert.NotNull(result);
             Assert.Equal(persons.Count, result.Count());
 
-            foreach (Person person in persons)
+            foreach (Person expected in persons)
             {
-                var item = result.Where(r => r.Id == person.Id).FirstOrDefault();
-                Assert.NotNull(item);
-                Assert.Equal(person.Skills.Count, item.Skills.Count);
-
-                foreach (Skill skill in person.Skills)
-                {
-                    Assert.Contains(item.Skills, s => s.Name == skill.Name);
-                }
+                var actual = result.Where(r => r.Id == expected.Id).SingleOrDefault();
+                AssertPersonWithSkills(expected, actual);
             }
+        }
+
+        #endregion
+
+        #region GetPerson
+
+        [Fact]
+        public async Task GetPerson_ShouldReturnNullIfPersonNotFound()
+        {
+            List<Person> persons = [new Person { Id = 1 }];
+
+            var mockDbContext = new Mock<IAppDbContext>();
+            mockDbContext.Setup(c => c.Persons).ReturnsDbSet(persons);
+
+            var id = 2;
+            var service = new PersonService(mockDbContext.Object);
+            var result = await service.GetPerson(id);
+
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task GetPerson_ShouldReturnPersonWithSkills()
+        {
+            var persons = new List<Person>
+            {
+                new Person { Id = 1, Name = "p_name#1", DisplayName = "dn#1", Skills = [] },
+                new Person { Id = 2, Name = "p_name#2", DisplayName = "dn#2",
+                    Skills = [new Skill { Name = "s_name" }] },
+                new Person { Id = 4, Name = "p_name#4", DisplayName = "dn#4",
+                    Skills = [new Skill { Name = "s_name#1" }, new Skill { Name = "s_name#2" }] }
+            };
+            DbContextOptions<AppDbContext> options = InitializeInMemoryDatabase(persons);
+
+            var id = 4;
+            var expected = persons.Where(r => r.Id == id).Single();
+
+            Person? result;
+            using (var context = new AppDbContext(options))
+            {
+                var service = new PersonService(context);
+                result = await service.GetPerson(id);
+            }
+
+            AssertPersonWithSkills(expected, result);
         }
 
         #endregion
@@ -141,5 +167,35 @@ namespace HallOfFameWebApi.Tests
         }
 
         #endregion
+
+        private void AssertPersonWithSkills(Person expected, Person? actual)
+        {
+            Assert.NotNull(actual);
+            Assert.Equal(expected.Skills.Count, actual.Skills.Count);
+
+            foreach (Skill skill in expected.Skills)
+            {
+                Assert.Contains(actual.Skills, s => s.Name == skill.Name);
+            }
+        }
+
+        private DbContextOptions<AppDbContext> InitializeInMemoryDatabase(IEnumerable<Person> persons)
+        {
+            var connection = new SqliteConnection("DataSource=:memory:");
+            connection.Open();
+
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseSqlite(connection)
+                .Options;
+
+            using (var context = new AppDbContext(options))
+            {
+                context.Database.EnsureCreated();
+                context.Persons.AddRange(persons);
+                context.SaveChanges();
+            }
+
+            return options;
+        }
     }
 }
