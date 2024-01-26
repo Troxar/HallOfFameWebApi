@@ -46,6 +46,7 @@ namespace HallOfFameWebApi.Controllers
         }
 
         [HttpDelete("{id:long}")]
+        [EnsurePersonExists]
         public async Task<IActionResult> DeletePerson(long id)
         {
             Person person = await _service.DeletePerson(id);

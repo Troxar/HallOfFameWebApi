@@ -38,6 +38,12 @@ namespace HallOfFameWebApi.Services
             return person;
         }
 
+        public async Task<bool> DoesPersonExist(long id)
+        {
+            return await _context.Persons
+                .AnyAsync(p => p.Id == id);
+        }
+
         public async Task<Person?> GetPerson(long id)
         {
             return await _context.Persons

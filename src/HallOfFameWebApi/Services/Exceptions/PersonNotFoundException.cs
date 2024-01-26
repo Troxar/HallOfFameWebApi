@@ -1,6 +1,6 @@
 ﻿namespace HallOfFameWebApi.Services.Exceptions
 {
-    public class PersonNotFoundException : ApplicationException
+    public class PersonNotFoundException : PersonException
     {
         public PersonNotFoundException() { }
 

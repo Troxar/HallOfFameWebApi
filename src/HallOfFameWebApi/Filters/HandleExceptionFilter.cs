@@ -35,6 +35,7 @@ namespace HallOfFameWebApi.Filters
         private HttpStatusCode GetStatusCode(Exception ex) => ex switch
         {
             PersonNotFoundException => HttpStatusCode.NotFound,
+            PersonIdNotDefinedException => HttpStatusCode.BadRequest,
             _ => HttpStatusCode.InternalServerError
         };
     }

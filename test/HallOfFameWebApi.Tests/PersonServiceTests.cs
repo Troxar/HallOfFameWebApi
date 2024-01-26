@@ -196,7 +196,25 @@ namespace HallOfFameWebApi.Tests
 
         #endregion
 
-        private void AssertPersonWithSkills(Person expected, Person? actual)
+        #region DoesPersonExists
+
+        [Theory]
+        [InlineData(2, true)]
+        [InlineData(5, false)]
+        public async Task DoesPersonExists_ShouldCheckIfPersonExists(long id, bool expected)
+        {
+            List<Person> persons = CreateSamplePersons();
+            Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
+
+            var service = new PersonService(mockDbContext.Object);
+            bool result = await service.DoesPersonExist(id);
+
+            Assert.Equal(expected, result);
+        }
+
+        #endregion
+
+        private static void AssertPersonWithSkills(Person expected, Person? actual)
         {
             Assert.NotNull(actual);
             Assert.Equal(expected.Skills.Count, actual.Skills.Count);
