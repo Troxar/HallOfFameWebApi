@@ -1,6 +1,7 @@
 ﻿using HallOfFameWebApi.Entities;
 using HallOfFameWebApi.Infrastructure;
 using HallOfFameWebApi.Models;
+using HallOfFameWebApi.Services.Exceptions;
 using Microsoft.EntityFrameworkCore;
 
 namespace HallOfFameWebApi.Services
@@ -21,6 +22,20 @@ namespace HallOfFameWebApi.Services
             await _context.SaveChangesAsync();
 
             return person.Id;
+        }
+
+        public async Task<Person> DeletePerson(long id)
+        {
+            Person? person = await GetPerson(id);
+            if (person is null)
+            {
+                throw new PersonNotFoundException(id);
+            }
+
+            _context.Persons.Remove(person);
+            await _context.SaveChangesAsync();
+
+            return person;
         }
 
         public async Task<Person?> GetPerson(long id)

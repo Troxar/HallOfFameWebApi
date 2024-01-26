@@ -44,5 +44,12 @@ namespace HallOfFameWebApi.Controllers
             long id = await _service.CreatePerson(cmd);
             return Ok(new { id });
         }
+
+        [HttpDelete("{id:long}")]
+        public async Task<IActionResult> DeletePerson(long id)
+        {
+            Person person = await _service.DeletePerson(id);
+            return Ok(person);
+        }
     }
 }

@@ -2,6 +2,7 @@ using HallOfFameWebApi.Entities;
 using HallOfFameWebApi.Infrastructure;
 using HallOfFameWebApi.Models;
 using HallOfFameWebApi.Services;
+using HallOfFameWebApi.Services.Exceptions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Moq;
@@ -17,10 +18,9 @@ namespace HallOfFameWebApi.Tests
         public async Task GetPersons_ShouldNotReturnPersonsIfTheyDoNotExist()
         {
             var persons = new List<Person>();
-            var mock = new Mock<IAppDbContext>();
-            mock.Setup(c => c.Persons).ReturnsDbSet(persons);
+            Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
 
-            var service = new PersonService(mock.Object);
+            var service = new PersonService(mockDbContext.Object);
             IEnumerable<Person> result = await service.GetPersons();
 
             Assert.NotNull(result);
@@ -30,16 +30,10 @@ namespace HallOfFameWebApi.Tests
         [Fact]
         public async Task GetPersons_ShouldReturnExpectedPersons()
         {
-            var persons = new List<Person>
-            {
-                new Person { Id = 1 },
-                new Person { Id = 2 },
-                new Person { Id = 4 }
-            };
-            var mock = new Mock<IAppDbContext>();
-            mock.Setup(c => c.Persons).ReturnsDbSet(persons);
+            List<Person> persons = CreateSamplePersons();
+            Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
 
-            var service = new PersonService(mock.Object);
+            var service = new PersonService(mockDbContext.Object);
             IEnumerable<Person> result = await service.GetPersons();
 
             Assert.NotNull(result);
@@ -54,14 +48,7 @@ namespace HallOfFameWebApi.Tests
         [Fact]
         public async Task GetPersons_ShouldReturnPersonsWithSkills()
         {
-            var persons = new List<Person>
-            {
-                new Person { Id = 1, Name = "p_name#1", DisplayName = "dn#1", Skills = [] },
-                new Person { Id = 2, Name = "p_name#2", DisplayName = "dn#2",
-                    Skills = [new Skill { Name = "s_name" }] },
-                new Person { Id = 4, Name = "p_name#4", DisplayName = "dn#4",
-                    Skills = [new Skill { Name = "s_name#1" }, new Skill { Name = "s_name#2" }] }
-            };
+            List<Person> persons = CreateSamplePersons();
             DbContextOptions<AppDbContext> options = InitializeInMemoryDatabase(persons);
 
             IEnumerable<Person> result;
@@ -88,12 +75,10 @@ namespace HallOfFameWebApi.Tests
         [Fact]
         public async Task GetPerson_ShouldReturnNullIfPersonNotFound()
         {
-            List<Person> persons = [new Person { Id = 1 }];
+            List<Person> persons = CreateSamplePersons();
+            Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
 
-            var mockDbContext = new Mock<IAppDbContext>();
-            mockDbContext.Setup(c => c.Persons).ReturnsDbSet(persons);
-
-            var id = 2;
+            var id = 5;
             var service = new PersonService(mockDbContext.Object);
             var result = await service.GetPerson(id);
 
@@ -103,14 +88,7 @@ namespace HallOfFameWebApi.Tests
         [Fact]
         public async Task GetPerson_ShouldReturnPersonWithSkills()
         {
-            var persons = new List<Person>
-            {
-                new Person { Id = 1, Name = "p_name#1", DisplayName = "dn#1", Skills = [] },
-                new Person { Id = 2, Name = "p_name#2", DisplayName = "dn#2",
-                    Skills = [new Skill { Name = "s_name" }] },
-                new Person { Id = 4, Name = "p_name#4", DisplayName = "dn#4",
-                    Skills = [new Skill { Name = "s_name#1" }, new Skill { Name = "s_name#2" }] }
-            };
+            List<Person> persons = CreateSamplePersons();
             DbContextOptions<AppDbContext> options = InitializeInMemoryDatabase(persons);
 
             var id = 4;
@@ -168,6 +146,56 @@ namespace HallOfFameWebApi.Tests
 
         #endregion
 
+        #region DeletePerson
+
+        [Fact]
+        public async Task DeletePerson_ShouldThrowExceptionIfPersonNotFound()
+        {
+            List<Person> persons = CreateSamplePersons();
+            Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
+
+            var id = 5;
+            var service = new PersonService(mockDbContext.Object);
+
+            await Assert.ThrowsAsync<PersonNotFoundException>(async () => await service.DeletePerson(id));
+        }
+
+        [Fact]
+        public async Task DeletePerson_ShouldReturnDeletedPerson()
+        {
+            List<Person> persons = CreateSamplePersons();
+            Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
+
+            var id = 2;
+            var service = new PersonService(mockDbContext.Object);
+            Person? result = await service.DeletePerson(id);
+
+            Assert.NotNull(result);
+            Assert.Equal(id, result.Id);
+        }
+
+        [Fact]
+        public async Task DeletePerson_ShouldDeletePersonFromDatabase()
+        {
+            List<Person> persons = CreateSamplePersons();
+            DbContextOptions<AppDbContext> options = InitializeInMemoryDatabase(persons);
+
+            long id = 2;
+            using (var context = new AppDbContext(options))
+            {
+                var service = new PersonService(context);
+                await service.DeletePerson(id);
+            }
+
+            using (var context = new AppDbContext(options))
+            {
+                Person? deleted = await context.Persons.FindAsync(id);
+                Assert.Null(deleted);
+            }
+        }
+
+        #endregion
+
         private void AssertPersonWithSkills(Person expected, Person? actual)
         {
             Assert.NotNull(actual);
@@ -196,6 +224,31 @@ namespace HallOfFameWebApi.Tests
             }
 
             return options;
+        }
+
+        private List<Person> CreateSamplePersons() => [
+            new Person { Id = 1, Name = "p_name#1", DisplayName = "dn#1", Skills = [] },
+            new Person
+            {
+                Id = 2,
+                Name = "p_name#2",
+                DisplayName = "dn#2",
+                Skills = [new Skill { Name = "s_name" }]
+            },
+            new Person
+            {
+                Id = 4,
+                Name = "p_name#4",
+                DisplayName = "dn#4",
+                Skills = [new Skill { Name = "s_name#1" }, new Skill { Name = "s_name#2" }]
+            }
+        ];
+
+        private Mock<IAppDbContext> CreateMockDbContextWithPersons(IEnumerable<Person> persons)
+        {
+            var mock = new Mock<IAppDbContext>();
+            mock.Setup(c => c.Persons).ReturnsDbSet(persons);
+            return mock;
         }
     }
 }

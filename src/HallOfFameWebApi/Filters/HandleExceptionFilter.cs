@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using HallOfFameWebApi.Services.Exceptions;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using System.Net;
 using System.Net.Mime;
@@ -16,14 +17,11 @@ namespace HallOfFameWebApi.Filters
 
         public void OnException(ExceptionContext context)
         {
-            bool isDevelopment = _environment.IsDevelopment();
             var details = new ProblemDetails
             {
-                Status = (int)HttpStatusCode.InternalServerError,
-                Title = isDevelopment
-                    ? context.Exception.Message
-                    : "Something went wrong",
-                Detail = isDevelopment
+                Status = (int)GetStatusCode(context.Exception),
+                Title = context.Exception.Message,
+                Detail = _environment.IsDevelopment()
                     ? context.Exception.StackTrace
                     : null
             };
@@ -33,5 +31,11 @@ namespace HallOfFameWebApi.Filters
                 ContentTypes = [MediaTypeNames.Application.ProblemJson]
             };
         }
+
+        private HttpStatusCode GetStatusCode(Exception ex) => ex switch
+        {
+            PersonNotFoundException => HttpStatusCode.NotFound,
+            _ => HttpStatusCode.InternalServerError
+        };
     }
 }

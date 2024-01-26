@@ -8,5 +8,6 @@ namespace HallOfFameWebApi.Services
         Task<Person?> GetPerson(long id);
         Task<IEnumerable<Person>> GetPersons();
         Task<long> CreatePerson(CreatePersonCommand cmd);
+        Task<Person> DeletePerson(long id);
     }
 }
