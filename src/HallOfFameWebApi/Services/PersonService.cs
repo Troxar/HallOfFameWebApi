@@ -15,18 +15,20 @@ namespace HallOfFameWebApi.Services
             _context = context;
         }
 
-        public async Task<long> CreatePerson(CreatePersonCommand cmd)
+        public async Task<Person> CreatePerson(CreatePersonCommand cmd)
         {
             Person person = cmd.ToPerson();
             _context.Persons.Add(person);
             await _context.SaveChangesAsync();
 
-            return person.Id;
+            return person;
         }
 
         public async Task<Person> DeletePerson(long id)
         {
-            Person? person = await GetPerson(id);
+            Person? person = await _context.Persons
+                .Include(p => p.Skills)
+                .SingleOrDefaultAsync(p => p.Id == id);
             if (person is null)
             {
                 throw new PersonNotFoundException(id);
@@ -47,9 +49,8 @@ namespace HallOfFameWebApi.Services
         public async Task<Person?> GetPerson(long id)
         {
             return await _context.Persons
-                .Where(p => p.Id == id)
                 .Include(p => p.Skills)
-                .SingleOrDefaultAsync();
+                .SingleOrDefaultAsync(p => p.Id == id);
         }
 
         public async Task<IEnumerable<Person>> GetPersons()

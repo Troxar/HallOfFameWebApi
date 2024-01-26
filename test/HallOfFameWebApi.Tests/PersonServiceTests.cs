@@ -63,7 +63,7 @@ namespace HallOfFameWebApi.Tests
 
             foreach (Person expected in persons)
             {
-                var actual = result.Where(r => r.Id == expected.Id).SingleOrDefault();
+                var actual = result.SingleOrDefault(r => r.Id == expected.Id);
                 AssertPersonWithSkills(expected, actual);
             }
         }
@@ -92,7 +92,7 @@ namespace HallOfFameWebApi.Tests
             DbContextOptions<AppDbContext> options = InitializeInMemoryDatabase(persons);
 
             var id = 4;
-            var expected = persons.Where(r => r.Id == id).Single();
+            var expected = persons.Single(r => r.Id == id);
 
             Person? result;
             using (var context = new AppDbContext(options))
@@ -111,37 +111,53 @@ namespace HallOfFameWebApi.Tests
         [Fact]
         public async Task CreatePerson_ShouldAddPersonToDatabase()
         {
-            var mockDbContext = new Mock<IAppDbContext>();
-            mockDbContext.Setup(c => c.Persons.Add(It.IsAny<Person>()));
-            mockDbContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(1);
+            List<Person> persons = CreateSamplePersons();
+            DbContextOptions<AppDbContext> options = InitializeInMemoryDatabase(persons);
 
-            var service = new PersonService(mockDbContext.Object);
-            var command = new CreatePersonCommand();
-            var result = await service.CreatePerson(command);
+            Person result;
+            using (var context = new AppDbContext(options))
+            {
+                var service = new PersonService(context);
+                var command = new CreatePersonCommand { Name = "Name", DisplayName = "DName" };
+                result = await service.CreatePerson(command);
+            }
 
-            mockDbContext.Verify(m => m.Persons.Add(It.IsAny<Person>()), Times.Once);
-            mockDbContext.Verify(m => m.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+            using (var context = new AppDbContext(options))
+            {
+                bool personCreated = await context.Persons.AnyAsync(p => p.Id == result.Id);
+                Assert.True(personCreated);
+            }
         }
 
         [Fact]
-        public async Task CreatePerson_ShouldReturnPersonId()
+        public async Task CreatePerson_ShouldReturnCreatedPerson()
         {
-            var mockDbContext = new Mock<IAppDbContext>();
-            mockDbContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(1);
+            List<Person> persons = CreateSamplePersons();
+            DbContextOptions<AppDbContext> options = InitializeInMemoryDatabase(persons);
 
-            var lastId = 123;
-            mockDbContext.Setup(c => c.Persons.Add(It.IsAny<Person>()))
-                .Callback<Person>(p => p.Id = ++lastId);
+            var command = new CreatePersonCommand
+            {
+                Name = "Name",
+                DisplayName = "DName",
+                Skills = [
+                    new CreateSkillCommand { Name = "skill#1", Level = 9 },
+                    new CreateSkillCommand { Name = "skill#2", Level = 1 }
+                ]
+            };
+            Person expected = command.ToPerson();
 
-            var service = new PersonService(mockDbContext.Object);
-            var command = new CreatePersonCommand();
-            var result1 = await service.CreatePerson(command);
-            var result2 = await service.CreatePerson(command);
+            Person result;
+            using (var context = new AppDbContext(options))
+            {
+                var service = new PersonService(context);
+                result = await service.CreatePerson(command);
+            }
 
-            Assert.Equal(124, result1);
-            Assert.Equal(125, result2);
+            Assert.True(result.Id > 0);
+            Assert.Equal(expected.Name, result.Name);
+            Assert.Equal(expected.DisplayName, result.DisplayName);
+
+            AssertPersonWithSkills(expected, result);
         }
 
         #endregion
@@ -167,11 +183,15 @@ namespace HallOfFameWebApi.Tests
             Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
 
             var id = 2;
+            var expected = persons.Single(r => r.Id == id);
+
             var service = new PersonService(mockDbContext.Object);
             Person? result = await service.DeletePerson(id);
 
             Assert.NotNull(result);
             Assert.Equal(id, result.Id);
+
+            AssertPersonWithSkills(expected, result);
         }
 
         [Fact]
@@ -189,8 +209,8 @@ namespace HallOfFameWebApi.Tests
 
             using (var context = new AppDbContext(options))
             {
-                Person? deleted = await context.Persons.FindAsync(id);
-                Assert.Null(deleted);
+                bool personExists = await context.Persons.AnyAsync(p => p.Id == id);
+                Assert.False(personExists);
             }
         }
 
@@ -225,7 +245,7 @@ namespace HallOfFameWebApi.Tests
             }
         }
 
-        private DbContextOptions<AppDbContext> InitializeInMemoryDatabase(IEnumerable<Person> persons)
+        private static DbContextOptions<AppDbContext> InitializeInMemoryDatabase(IEnumerable<Person> persons)
         {
             var connection = new SqliteConnection("DataSource=:memory:");
             connection.Open();
@@ -244,7 +264,7 @@ namespace HallOfFameWebApi.Tests
             return options;
         }
 
-        private List<Person> CreateSamplePersons() => [
+        private static List<Person> CreateSamplePersons() => [
             new Person { Id = 1, Name = "p_name#1", DisplayName = "dn#1", Skills = [] },
             new Person
             {
@@ -262,7 +282,7 @@ namespace HallOfFameWebApi.Tests
             }
         ];
 
-        private Mock<IAppDbContext> CreateMockDbContextWithPersons(IEnumerable<Person> persons)
+        private static Mock<IAppDbContext> CreateMockDbContextWithPersons(IEnumerable<Person> persons)
         {
             var mock = new Mock<IAppDbContext>();
             mock.Setup(c => c.Persons).ReturnsDbSet(persons);

@@ -41,8 +41,8 @@ namespace HallOfFameWebApi.Controllers
         [HttpPost]
         public async Task<IActionResult> CreatePerson(CreatePersonCommand cmd)
         {
-            long id = await _service.CreatePerson(cmd);
-            return Ok(new { id });
+            Person person = await _service.CreatePerson(cmd);
+            return Ok(person);
         }
 
         [HttpDelete("{id:long}")]
