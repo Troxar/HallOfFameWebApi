@@ -9,6 +9,7 @@ namespace HallOfFameWebApi.Services
         Task<IEnumerable<Person>> GetPersons();
         Task<Person> CreatePerson(CreatePersonCommand cmd);
         Task<Person> DeletePerson(long id);
+        Task<Person> UpdatePerson(long id, UpdatePersonCommand cmd);
         Task<bool> DoesPersonExist(long id);
     }
 }

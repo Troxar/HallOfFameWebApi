@@ -52,5 +52,13 @@ namespace HallOfFameWebApi.Controllers
             Person person = await _service.DeletePerson(id);
             return Ok(person);
         }
+
+        [HttpPut("{id:long}")]
+        [EnsurePersonExists]
+        public async Task<IActionResult> UpdatePerson(long id, UpdatePersonCommand cmd)
+        {
+            Person person = await _service.UpdatePerson(id, cmd);
+            return Ok(person);
+        }
     }
 }

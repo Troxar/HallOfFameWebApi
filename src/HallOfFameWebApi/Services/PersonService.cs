@@ -26,13 +26,7 @@ namespace HallOfFameWebApi.Services
 
         public async Task<Person> DeletePerson(long id)
         {
-            Person? person = await _context.Persons
-                .Include(p => p.Skills)
-                .SingleOrDefaultAsync(p => p.Id == id);
-            if (person is null)
-            {
-                throw new PersonNotFoundException(id);
-            }
+            Person person = await GetExistingPerson(id);
 
             _context.Persons.Remove(person);
             await _context.SaveChangesAsync();
@@ -58,6 +52,31 @@ namespace HallOfFameWebApi.Services
             return await _context.Persons
                 .Include(p => p.Skills)
                 .ToListAsync();
+        }
+
+        public async Task<Person> UpdatePerson(long id, UpdatePersonCommand cmd)
+        {
+            Person person = await GetExistingPerson(id);
+
+            cmd.UpdatePerson(person);
+            _context.Persons.Update(person);
+            await _context.SaveChangesAsync();
+
+            return person;
+        }
+
+        private async Task<Person> GetExistingPerson(long id)
+        {
+            Person? person = await _context.Persons
+                .Include(p => p.Skills)
+                .SingleOrDefaultAsync(p => p.Id == id);
+
+            if (person is null)
+            {
+                throw new PersonNotFoundException(id);
+            }
+
+            return person;
         }
     }
 }

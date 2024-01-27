@@ -186,7 +186,7 @@ namespace HallOfFameWebApi.Tests
             var expected = persons.Single(r => r.Id == id);
 
             var service = new PersonService(mockDbContext.Object);
-            Person? result = await service.DeletePerson(id);
+            Person result = await service.DeletePerson(id);
 
             Assert.NotNull(result);
             Assert.Equal(id, result.Id);
@@ -231,6 +231,84 @@ namespace HallOfFameWebApi.Tests
 
             Assert.Equal(expected, result);
         }
+
+        #endregion
+
+        #region UpdatePerson
+
+        [Fact]
+        public async Task UpdatePerson_ShouldThrowExceptionIfPersonNotFound()
+        {
+            List<Person> persons = CreateSamplePersons();
+            Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
+
+            var id = 5;
+            var cmd = new UpdatePersonCommand();
+            var service = new PersonService(mockDbContext.Object);
+
+            await Assert.ThrowsAsync<PersonNotFoundException>(async () => await service.UpdatePerson(id, cmd));
+        }
+
+        [Fact]
+        public async Task UpdatePerson_ShouldReturnUpdatedPerson()
+        {
+            List<Person> persons = CreateSamplePersons();
+            Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
+
+            var id = 2;
+            var command = CreateSampleUpdatePersonCommand();
+            Person expected = command.ToPerson(id);
+
+            var service = new PersonService(mockDbContext.Object);
+            Person result = await service.UpdatePerson(id, command);
+
+            Assert.Equal(expected.Id, result.Id);
+            Assert.Equal(expected.Name, result.Name);
+            Assert.Equal(expected.DisplayName, result.DisplayName);
+
+            AssertPersonWithSkills(expected, result);
+        }
+
+        [Fact]
+        public async Task UpdatePerson_ShouldUpdatePersonInDatabase()
+        {
+            List<Person> persons = CreateSamplePersons();
+            DbContextOptions<AppDbContext> options = InitializeInMemoryDatabase(persons);
+
+            long id = 2;
+            var command = CreateSampleUpdatePersonCommand();
+            Person expected = command.ToPerson(id);
+
+            using (var context = new AppDbContext(options))
+            {
+                var service = new PersonService(context);
+                await service.UpdatePerson(id, command);
+            }
+
+            using (var context = new AppDbContext(options))
+            {
+                Person result = await context.Persons
+                    .Include(p => p.Skills)
+                    .SingleAsync(p => p.Id == id);
+
+                Assert.Equal(expected.Id, result.Id);
+                Assert.Equal(expected.Name, result.Name);
+                Assert.Equal(expected.DisplayName, result.DisplayName);
+
+                AssertPersonWithSkills(expected, result);
+            }
+        }
+
+        private static UpdatePersonCommand CreateSampleUpdatePersonCommand() =>
+            new UpdatePersonCommand
+            {
+                Name = "Name",
+                DisplayName = "DName",
+                Skills = [
+                    new UpdateSkillCommand { Name = "skill#1", Level = 9 },
+                    new UpdateSkillCommand { Name = "skill#2", Level = 1 }
+                ]
+            };
 
         #endregion
 
