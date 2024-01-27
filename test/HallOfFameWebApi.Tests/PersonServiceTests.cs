@@ -1,3 +1,4 @@
+using FluentAssertions;
 using HallOfFameWebApi.Entities;
 using HallOfFameWebApi.Infrastructure;
 using HallOfFameWebApi.Models;
@@ -12,315 +13,274 @@ namespace HallOfFameWebApi.Tests
 {
     public class PersonServiceTests
     {
-        #region GetPersons
-
-        [Fact]
-        public async Task GetPersons_ShouldNotReturnPersonsIfTheyDoNotExist()
+        public class GetPersonsTests
         {
-            var persons = new List<Person>();
-            Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
-
-            var service = new PersonService(mockDbContext.Object);
-            IEnumerable<Person> result = await service.GetPersons();
-
-            Assert.NotNull(result);
-            Assert.Empty(result);
-        }
-
-        [Fact]
-        public async Task GetPersons_ShouldReturnExpectedPersons()
-        {
-            List<Person> persons = CreateSamplePersons();
-            Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
-
-            var service = new PersonService(mockDbContext.Object);
-            IEnumerable<Person> result = await service.GetPersons();
-
-            Assert.NotNull(result);
-            Assert.Equal(persons.Count, result.Count());
-
-            foreach (Person person in persons)
+            [Fact]
+            public async Task GetPersons_ShouldNotReturnPersonsIfTheyDoNotExist()
             {
-                Assert.Contains(result, r => r.Id == person.Id);
+                var persons = new List<Person>();
+                Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
+
+                var service = new PersonService(mockDbContext.Object);
+                IEnumerable<Person> result = await service.GetPersons();
+
+                result.Should().NotBeNull()
+                    .And.BeEmpty();
+            }
+
+            [Fact]
+            public async Task GetPersons_ShouldReturnExpectedPersons()
+            {
+                List<Person> persons = CreateSamplePersons();
+                Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
+
+                var service = new PersonService(mockDbContext.Object);
+                IEnumerable<Person> result = await service.GetPersons();
+
+                result.Should().NotBeNull()
+                    .And.BeEquivalentTo(persons);
             }
         }
 
-        [Fact]
-        public async Task GetPersons_ShouldReturnPersonsWithSkills()
+        public class GetPersonTests
         {
-            List<Person> persons = CreateSamplePersons();
-            DbContextOptions<AppDbContext> options = InitializeInMemoryDatabase(persons);
-
-            IEnumerable<Person> result;
-            using (var context = new AppDbContext(options))
+            [Fact]
+            public async Task GetPerson_ShouldReturnNullIfPersonNotFound()
             {
-                var service = new PersonService(context);
-                result = await service.GetPersons();
+                List<Person> persons = CreateSamplePersons();
+                Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
+
+                var id = 5;
+                var service = new PersonService(mockDbContext.Object);
+                var result = await service.GetPerson(id);
+
+                result.Should().BeNull();
             }
 
-            Assert.NotNull(result);
-            Assert.Equal(persons.Count, result.Count());
-
-            foreach (Person expected in persons)
+            [Fact]
+            public async Task GetPerson_ShouldReturnPersonWithSkills()
             {
-                var actual = result.SingleOrDefault(r => r.Id == expected.Id);
-                AssertPersonWithSkills(expected, actual);
-            }
-        }
+                List<Person> persons = CreateSamplePersons();
+                DbContextOptions<AppDbContext> options = InitializeInMemoryDatabase(persons);
 
-        #endregion
+                var id = 4;
+                var expected = persons.Single(r => r.Id == id);
 
-        #region GetPerson
+                using (var context = new AppDbContext(options))
+                {
+                    var service = new PersonService(context);
+                    Person? result = await service.GetPerson(id);
 
-        [Fact]
-        public async Task GetPerson_ShouldReturnNullIfPersonNotFound()
-        {
-            List<Person> persons = CreateSamplePersons();
-            Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
-
-            var id = 5;
-            var service = new PersonService(mockDbContext.Object);
-            var result = await service.GetPerson(id);
-
-            Assert.Null(result);
-        }
-
-        [Fact]
-        public async Task GetPerson_ShouldReturnPersonWithSkills()
-        {
-            List<Person> persons = CreateSamplePersons();
-            DbContextOptions<AppDbContext> options = InitializeInMemoryDatabase(persons);
-
-            var id = 4;
-            var expected = persons.Single(r => r.Id == id);
-
-            Person? result;
-            using (var context = new AppDbContext(options))
-            {
-                var service = new PersonService(context);
-                result = await service.GetPerson(id);
-            }
-
-            AssertPersonWithSkills(expected, result);
-        }
-
-        #endregion
-
-        #region CreatePerson
-
-        [Fact]
-        public async Task CreatePerson_ShouldAddPersonToDatabase()
-        {
-            List<Person> persons = CreateSamplePersons();
-            DbContextOptions<AppDbContext> options = InitializeInMemoryDatabase(persons);
-
-            Person result;
-            using (var context = new AppDbContext(options))
-            {
-                var service = new PersonService(context);
-                var command = new CreatePersonCommand { Name = "Name", DisplayName = "DName" };
-                result = await service.CreatePerson(command);
-            }
-
-            using (var context = new AppDbContext(options))
-            {
-                bool personCreated = await context.Persons.AnyAsync(p => p.Id == result.Id);
-                Assert.True(personCreated);
+                    AssertPersonEquality(expected, result);
+                }
             }
         }
 
-        [Fact]
-        public async Task CreatePerson_ShouldReturnCreatedPerson()
+        public class CreatePersonTests
         {
-            List<Person> persons = CreateSamplePersons();
-            DbContextOptions<AppDbContext> options = InitializeInMemoryDatabase(persons);
-
-            var command = new CreatePersonCommand
+            [Fact]
+            public async Task CreatePerson_ShouldAddPersonToDatabase()
             {
-                Name = "Name",
-                DisplayName = "DName",
-                Skills = [
-                    new CreateSkillCommand { Name = "skill#1", Level = 9 },
-                    new CreateSkillCommand { Name = "skill#2", Level = 1 }
-                ]
-            };
-            Person expected = command.ToPerson();
+                List<Person> persons = CreateSamplePersons();
+                DbContextOptions<AppDbContext> options = InitializeInMemoryDatabase(persons);
 
-            Person result;
-            using (var context = new AppDbContext(options))
-            {
-                var service = new PersonService(context);
-                result = await service.CreatePerson(command);
+                Person result;
+                using (var context = new AppDbContext(options))
+                {
+                    var service = new PersonService(context);
+                    var command = SampleCreatePersonCommand;
+                    result = await service.CreatePerson(command);
+                }
+
+                using (var context = new AppDbContext(options))
+                {
+                    bool personCreated = await context.Persons.AnyAsync(p => p.Id == result.Id);
+                    personCreated.Should().BeTrue();
+                }
             }
 
-            Assert.True(result.Id > 0);
-            Assert.Equal(expected.Name, result.Name);
-            Assert.Equal(expected.DisplayName, result.DisplayName);
-
-            AssertPersonWithSkills(expected, result);
-        }
-
-        #endregion
-
-        #region DeletePerson
-
-        [Fact]
-        public async Task DeletePerson_ShouldThrowExceptionIfPersonNotFound()
-        {
-            List<Person> persons = CreateSamplePersons();
-            Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
-
-            var id = 5;
-            var service = new PersonService(mockDbContext.Object);
-
-            await Assert.ThrowsAsync<PersonNotFoundException>(async () => await service.DeletePerson(id));
-        }
-
-        [Fact]
-        public async Task DeletePerson_ShouldReturnDeletedPerson()
-        {
-            List<Person> persons = CreateSamplePersons();
-            Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
-
-            var id = 2;
-            var expected = persons.Single(r => r.Id == id);
-
-            var service = new PersonService(mockDbContext.Object);
-            Person result = await service.DeletePerson(id);
-
-            Assert.NotNull(result);
-            Assert.Equal(id, result.Id);
-
-            AssertPersonWithSkills(expected, result);
-        }
-
-        [Fact]
-        public async Task DeletePerson_ShouldDeletePersonFromDatabase()
-        {
-            List<Person> persons = CreateSamplePersons();
-            DbContextOptions<AppDbContext> options = InitializeInMemoryDatabase(persons);
-
-            long id = 2;
-            using (var context = new AppDbContext(options))
+            [Fact]
+            public async Task CreatePerson_ShouldReturnCreatedPerson()
             {
-                var service = new PersonService(context);
-                await service.DeletePerson(id);
+                List<Person> persons = CreateSamplePersons();
+                DbContextOptions<AppDbContext> options = InitializeInMemoryDatabase(persons);
+
+                var command = SampleCreatePersonCommand;
+
+                using (var context = new AppDbContext(options))
+                {
+                    var service = new PersonService(context);
+                    Person result = await service.CreatePerson(command);
+
+                    AssertCommandAndPersonEquality(command, result);
+                }
             }
 
-            using (var context = new AppDbContext(options))
+            private CreatePersonCommand SampleCreatePersonCommand =
+                new CreatePersonCommand
+                {
+                    Name = "Name",
+                    DisplayName = "DName",
+                    Skills = [
+                        new CreateSkillCommand { Name = "skill#1", Level = 9 },
+                        new CreateSkillCommand { Name = "skill#2", Level = 1 }
+                    ]
+                };
+        }
+
+        public class DeletePersonTests
+        {
+            [Fact]
+            public async Task DeletePerson_ShouldThrowExceptionIfPersonNotFound()
             {
-                bool personExists = await context.Persons.AnyAsync(p => p.Id == id);
-                Assert.False(personExists);
-            }
-        }
+                List<Person> persons = CreateSamplePersons();
+                Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
 
-        #endregion
+                var id = 5;
+                var service = new PersonService(mockDbContext.Object);
 
-        #region DoesPersonExists
-
-        [Theory]
-        [InlineData(2, true)]
-        [InlineData(5, false)]
-        public async Task DoesPersonExists_ShouldCheckIfPersonExists(long id, bool expected)
-        {
-            List<Person> persons = CreateSamplePersons();
-            Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
-
-            var service = new PersonService(mockDbContext.Object);
-            bool result = await service.DoesPersonExist(id);
-
-            Assert.Equal(expected, result);
-        }
-
-        #endregion
-
-        #region UpdatePerson
-
-        [Fact]
-        public async Task UpdatePerson_ShouldThrowExceptionIfPersonNotFound()
-        {
-            List<Person> persons = CreateSamplePersons();
-            Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
-
-            var id = 5;
-            var cmd = new UpdatePersonCommand();
-            var service = new PersonService(mockDbContext.Object);
-
-            await Assert.ThrowsAsync<PersonNotFoundException>(async () => await service.UpdatePerson(id, cmd));
-        }
-
-        [Fact]
-        public async Task UpdatePerson_ShouldReturnUpdatedPerson()
-        {
-            List<Person> persons = CreateSamplePersons();
-            Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
-
-            var id = 2;
-            var command = CreateSampleUpdatePersonCommand();
-            Person expected = command.ToPerson(id);
-
-            var service = new PersonService(mockDbContext.Object);
-            Person result = await service.UpdatePerson(id, command);
-
-            Assert.Equal(expected.Id, result.Id);
-            Assert.Equal(expected.Name, result.Name);
-            Assert.Equal(expected.DisplayName, result.DisplayName);
-
-            AssertPersonWithSkills(expected, result);
-        }
-
-        [Fact]
-        public async Task UpdatePerson_ShouldUpdatePersonInDatabase()
-        {
-            List<Person> persons = CreateSamplePersons();
-            DbContextOptions<AppDbContext> options = InitializeInMemoryDatabase(persons);
-
-            long id = 2;
-            var command = CreateSampleUpdatePersonCommand();
-            Person expected = command.ToPerson(id);
-
-            using (var context = new AppDbContext(options))
-            {
-                var service = new PersonService(context);
-                await service.UpdatePerson(id, command);
+                var action = async () => await service.DeletePerson(id);
+                await action.Should().ThrowAsync<PersonNotFoundException>();
             }
 
-            using (var context = new AppDbContext(options))
+            [Fact]
+            public async Task DeletePerson_ShouldReturnDeletedPerson()
             {
-                Person result = await context.Persons
-                    .Include(p => p.Skills)
-                    .SingleAsync(p => p.Id == id);
+                List<Person> persons = CreateSamplePersons();
+                Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
 
-                Assert.Equal(expected.Id, result.Id);
-                Assert.Equal(expected.Name, result.Name);
-                Assert.Equal(expected.DisplayName, result.DisplayName);
+                var id = 2;
+                var expected = persons.Single(r => r.Id == id);
 
-                AssertPersonWithSkills(expected, result);
+                var service = new PersonService(mockDbContext.Object);
+                Person result = await service.DeletePerson(id);
+
+                AssertPersonEquality(expected, result);
+            }
+
+            [Fact]
+            public async Task DeletePerson_ShouldDeletePersonFromDatabase()
+            {
+                List<Person> persons = CreateSamplePersons();
+                DbContextOptions<AppDbContext> options = InitializeInMemoryDatabase(persons);
+
+                long id = 2;
+                using (var context = new AppDbContext(options))
+                {
+                    var service = new PersonService(context);
+                    await service.DeletePerson(id);
+                }
+
+                using (var context = new AppDbContext(options))
+                {
+                    bool personExists = await context.Persons.AnyAsync(p => p.Id == id);
+                    personExists.Should().BeFalse();
+                }
             }
         }
 
-        private static UpdatePersonCommand CreateSampleUpdatePersonCommand() =>
-            new UpdatePersonCommand
-            {
-                Name = "Name",
-                DisplayName = "DName",
-                Skills = [
-                    new UpdateSkillCommand { Name = "skill#1", Level = 9 },
-                    new UpdateSkillCommand { Name = "skill#2", Level = 1 }
-                ]
-            };
-
-        #endregion
-
-        private static void AssertPersonWithSkills(Person expected, Person? actual)
+        public class DoesPersonExistsTests
         {
-            Assert.NotNull(actual);
-            Assert.Equal(expected.Skills.Count, actual.Skills.Count);
-
-            foreach (Skill skill in expected.Skills)
+            [Theory]
+            [InlineData(2, true)]
+            [InlineData(5, false)]
+            public async Task DoesPersonExists_ShouldCheckIfPersonExists(long id, bool expected)
             {
-                Assert.Contains(actual.Skills, s => s.Name == skill.Name);
+                List<Person> persons = CreateSamplePersons();
+                Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
+
+                var service = new PersonService(mockDbContext.Object);
+                bool result = await service.DoesPersonExist(id);
+
+                result.Should().Be(expected);
             }
+        }
+
+        public class UpdatePersonTests
+        {
+            [Fact]
+            public async Task UpdatePerson_ShouldThrowExceptionIfPersonNotFound()
+            {
+                List<Person> persons = CreateSamplePersons();
+                Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
+
+                var id = 5;
+                var command = SampleUpdatePersonCommand;
+                var service = new PersonService(mockDbContext.Object);
+
+                var action = async () => await service.UpdatePerson(id, command);
+                await action.Should().ThrowAsync<PersonNotFoundException>();
+            }
+
+            [Fact]
+            public async Task UpdatePerson_ShouldReturnUpdatedPerson()
+            {
+                List<Person> persons = CreateSamplePersons();
+                Mock<IAppDbContext> mockDbContext = CreateMockDbContextWithPersons(persons);
+
+                var id = 2;
+                var command = SampleUpdatePersonCommand;
+
+                var service = new PersonService(mockDbContext.Object);
+                Person result = await service.UpdatePerson(id, command);
+
+                AssertCommandAndPersonEquality(command, result);
+            }
+
+            [Fact]
+            public async Task UpdatePerson_ShouldUpdatePersonInDatabase()
+            {
+                List<Person> persons = CreateSamplePersons();
+                DbContextOptions<AppDbContext> options = InitializeInMemoryDatabase(persons);
+
+                long id = 2;
+                var command = SampleUpdatePersonCommand;
+
+                using (var context = new AppDbContext(options))
+                {
+                    var service = new PersonService(context);
+                    await service.UpdatePerson(id, command);
+                }
+
+                using (var context = new AppDbContext(options))
+                {
+                    Person result = await context.Persons
+                        .Include(p => p.Skills)
+                        .SingleAsync(p => p.Id == id);
+
+                    AssertCommandAndPersonEquality(command, result);
+                }
+            }
+
+            private UpdatePersonCommand SampleUpdatePersonCommand =
+                new UpdatePersonCommand
+                {
+                    Name = "Name",
+                    DisplayName = "DName",
+                    Skills = [
+                        new UpdateSkillCommand { Name = "skill#1", Level = 9 },
+                        new UpdateSkillCommand { Name = "skill#2", Level = 1 }
+                    ]
+                };
+        }
+
+        private static void AssertPersonEquality(Person expected, Person? actual)
+        {
+            actual.Should().NotBeNull()
+                .And.BeEquivalentTo(expected,
+                    options => options.Excluding(p => p.Skills));
+
+            actual?.Skills.Should().BeEquivalentTo(expected.Skills,
+                options => options.Excluding(s => s.Person.Skills));
+        }
+
+        private static void AssertCommandAndPersonEquality<TSkillCommand>(PersonCommandBase<TSkillCommand> command, Person? person)
+            where TSkillCommand : SkillCommandBase
+        {
+            person.Should().NotBeNull()
+                .And.BeEquivalentTo(command, options => options
+                    .ExcludingMissingMembers());
+            person!.Id.Should().BeGreaterThan(0);
         }
 
         private static DbContextOptions<AppDbContext> InitializeInMemoryDatabase(IEnumerable<Person> persons)
@@ -349,14 +309,17 @@ namespace HallOfFameWebApi.Tests
                 Id = 2,
                 Name = "p_name#2",
                 DisplayName = "dn#2",
-                Skills = [new Skill { Name = "s_name" }]
+                Skills = [new Skill { Name = "s_name", Level = 2 }]
             },
             new Person
             {
                 Id = 4,
                 Name = "p_name#4",
                 DisplayName = "dn#4",
-                Skills = [new Skill { Name = "s_name#1" }, new Skill { Name = "s_name#2" }]
+                Skills = [
+                    new Skill { Name = "s_name#1", Level = 4 },
+                    new Skill { Name = "s_name#2", Level = 8 }
+                ]
             }
         ];
 
