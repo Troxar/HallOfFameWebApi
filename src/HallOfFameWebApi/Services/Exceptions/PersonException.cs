@@ -8,5 +8,10 @@
 
         public PersonException(string? message, Exception? innerException)
             : base(message, innerException) { }
+
+        public virtual void WriteToLog(ILogger logger, LogLevel logLevel)
+        {
+            logger.Log(logLevel, Message);
+        }
     }
 }
